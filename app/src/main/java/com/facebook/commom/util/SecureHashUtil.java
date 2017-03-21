@@ -1,0 +1,87 @@
+package com.facebook.commom.util;
+
+/**
+ * Created by heshixiyang on 2017/3/12.
+ */
+
+import android.util.Base64;
+
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+/**
+ * 为了安全散列的静态方法
+ * Static methods for secure hashing.
+ */
+public class SecureHashUtil {
+
+    public static String makeSHA1Hash(String text) {
+        try {
+            return makeSHA1Hash(text.getBytes("utf-8"));
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String makeSHA1Hash(byte[] bytes) {
+        return makeHash(bytes, "SHA-1");
+    }
+
+    public static String makeSHA256Hash(byte[] bytes) {
+        return makeHash(bytes, "SHA-256");
+    }
+
+    public static String makeSHA1HashBase64(byte[] bytes) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            md.update(bytes, 0, bytes.length);
+            byte[] sha1hash = md.digest();
+            return Base64.encodeToString(sha1hash, Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String makeMD5Hash(String text) {
+        try {
+            return makeMD5Hash(text.getBytes("utf-8"));
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String makeMD5Hash(byte[] bytes) {
+        return makeHash(bytes, "MD5");
+    }
+
+    static final byte[] HEX_CHAR_TABLE = {
+            (byte) '0', (byte) '1', (byte) '2', (byte) '3',
+            (byte) '4', (byte) '5', (byte) '6', (byte) '7',
+            (byte) '8', (byte) '9', (byte) 'a', (byte) 'b',
+            (byte) 'c', (byte) 'd', (byte) 'e', (byte) 'f'
+    };
+
+    public static String convertToHex(byte[] raw) throws UnsupportedEncodingException {
+        StringBuilder sb = new StringBuilder(raw.length);
+        for (byte b : raw) {
+            int v = b & 0xFF;
+            sb.append((char) HEX_CHAR_TABLE[v >>> 4]);
+            sb.append((char) HEX_CHAR_TABLE[v & 0xF]);
+        }
+        return sb.toString();
+    }
+
+    private static String makeHash(byte[] bytes, String algorithm) {
+        try {
+            MessageDigest md = MessageDigest.getInstance(algorithm);
+            md.update(bytes, 0, bytes.length);
+            byte[] hash = md.digest();
+            return convertToHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
