@@ -22,7 +22,7 @@ import java.util.Collection;
 import javax.annotation.Nullable;
 
 /**
- * 提供一个具体的DiskStorage实现，内部使用的是DiskStorageCache，类似于DiskStorageCache的代理
+ * 提供一个具体的DiskStorage实现，内部使用的是DefaultDiskStorage，类似于DefaultDiskStorage的代理
  * A supplier of a DiskStorage concrete implementation.
  */
 public class DynamicDefaultDiskStorage implements DiskStorage {

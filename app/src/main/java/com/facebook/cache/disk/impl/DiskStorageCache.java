@@ -16,7 +16,6 @@ import com.facebook.cache.commom.WriterCallback;
 import com.facebook.cache.disk.DiskStorage;
 import com.facebook.cache.disk.EntryEvictionComparatorSupplier;
 import com.facebook.cache.disk.FileCache;
-import com.facebook.commom.disk.DiskTrimmable;
 import com.facebook.commom.disk.DiskTrimmableRegistry;
 import com.facebook.commom.logging.FLog;
 import com.facebook.commom.statfs.StatFsHelper;
@@ -40,11 +39,11 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
- * 管理磁盘存储的缓存
+ * 硬盘缓存管理类，其使用DefaultDiskStorage进行管理
  * Cache that manages disk storage.
  */
 @ThreadSafe
-public class DiskStorageCache implements FileCache, DiskTrimmable {
+public class DiskStorageCache implements FileCache{
 
     private static final Class<?> TAG = DiskStorageCache.class;
 
@@ -53,7 +52,11 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     // subclasses of MediaCache have moved on to subsequent versions and are
     // no longer using this constant, it can be removed.
     public static final int START_OF_VERSIONING = 1;
+
+    //有些时候可能文件的时间会出现错误，比如说文件创建的时间在未来，此时我们将使用这个参数
     private static final long FUTURE_TIMESTAMP_THRESHOLD_MS = TimeUnit.HOURS.toMillis(2);
+
+    //以这个时间周期更新CacheStats和mResourceIndex，因为缓存增减很频繁所以不需要实时更新。
     // Force recalculation of the ground truth for filecache size at this interval
     private static final long FILECACHE_SIZE_UPDATE_PERIOD_MS = TimeUnit.MINUTES.toMillis(30);
     private static final double TRIMMING_LOWER_BOUND = 0.02;
@@ -65,9 +68,10 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     private final CountDownLatch mCountDownLatch;
     private long mCacheSizeLimit;
 
+    //缓存事件的监听器，客户端可以设置这个，对缓存的事件进行监听
     private final CacheEventListener mCacheEventListener;
 
-    //所有储存在硬盘上的文件的resourceId
+    //所有硬盘缓存的resourceId都储存在这里，不过不是实时更新
     // All resourceId stored on disk (if any).
     @GuardedBy("mLock")
     @VisibleForTesting
@@ -81,6 +85,7 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     private final StatFsHelper mStatFsHelper;
 
     private final DiskStorage mStorage;
+    //DiskStorage.Entry的比较器的生产者，通过DiskCacheConfig设置，用于LRU
     private final EntryEvictionComparatorSupplier mEntryEvictionComparatorSupplier;
     private final CacheErrorLogger mCacheErrorLogger;
     private final boolean mIndexPopulateAtStartupEnabled;
@@ -95,7 +100,7 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     private boolean mIndexReady;
 
     /**
-     * 对缓存数据——当前缓存的大小(以字节为单位),缓存条目的数量
+     * 对缓存状态(当前缓存的大小(以字节为单位),缓存条目的数量)进行跟踪
      * Stats about the cache - currently size of the cache (in bytes) and number of items in
      * the cache
      */
@@ -254,8 +259,8 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     }
 
     /**
-     * 检索文件相应的m键,如果是在缓存中。并且touch该条目,从而改变其LRU的时间戳
-     * 如果文件不是文件缓存中,返回null。
+     * 根据key检索缓存文件,如果是在缓存中那么返回缓存，并且touch该条目,从而改变其LRU的时间戳
+     * 如果文件不在文件缓存中,返回null。
      * Retrieves the file corresponding to the mKey, if it is in the cache. Also
      * touches the item, thus changing its LRU timestamp. If the file is not
      * present in the file cache, returns null.
@@ -306,12 +311,10 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     }
 
     /**
-     * 调查mKey所指向的对象中是否在缓存中
+     * 查询key所对应的文件缓存是否存在，注意这个方法会改变该文件缓存的时间戳，也就是touch该文件
      * Probes whether the object corresponding to the mKey is in the cache.
-     * 注意这个调查会触动该item在缓存中的时间戳
      * Note that the act of probing touches the item (if present in cache),
      * thus changing its LRU timestamp.
-     * <p>
      * 这个比文件检索有快得多，但是其依然不能出现在UI线程
      * This will be faster than retrieving the object, but it still has
      * file system accesses and should NOT be called on the UI thread.
@@ -345,7 +348,7 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     }
 
     /**
-     * 创建一个写入临时文件的会话
+     * 创建DiskStorage.Inserter，方便客户端写入文件缓存
      * Creates a temp file for writing outside the session lock
      */
     private DiskStorage.Inserter startInsert(
@@ -357,7 +360,7 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     }
 
     /**
-     * 提交缓存提供的临时文件,重命名它匹配缓存的散列约定。
+     * 提交缓存提供的临时文件,将其重命名。
      * Commits the provided temp file to the cache, renaming it to match
      * the cache's hashing convention.
      */
@@ -375,9 +378,8 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
 
     @Override
     public BinaryResource insert(CacheKey key, WriterCallback callback) throws IOException {
-        //写入一个临时文件,然后移入缓存文件夹中。这将允许更多的并行性行为，在写文件的时候。
-        // Write to a temp file, then move it into place. This allows more parallelism
-        // when writing files.
+        //写入一个临时文件,然后移入缓存文件夹中。这个操作是为了允许并行性行为。
+        // Write to a temp file, then move it into place. This allows more parallelism when writing files.
         SettableCacheEvent cacheEvent = SettableCacheEvent.obtain()
                 .setCacheKey(key);
         mCacheEventListener.onWriteAttempt(cacheEvent);
@@ -389,16 +391,13 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
         }
         cacheEvent.setResourceId(resourceId);
         try {
-            //获取文件是同步的
             // getting the file is synchronized
             DiskStorage.Inserter inserter = startInsert(resourceId, key);
             try {
                 inserter.writeData(callback, key);
-                //提交文件是同步的
                 // Committing the file is synchronized
                 BinaryResource resource = endInsert(inserter, key, resourceId);
-                cacheEvent.setItemSize(resource.size())
-                        .setCacheSize(mCacheStats.getSize());
+                cacheEvent.setItemSize(resource.size()).setCacheSize(mCacheStats.getSize());
                 mCacheEventListener.onWriteSuccess(cacheEvent);
                 return resource;
             } finally {
@@ -492,17 +491,17 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     }
 
     /**
-     * 测试如果缓存大小超出了其局限性,如果是这样,驱逐一些文件。
-     * 它也称也许更新文件缓存大小
+     * 判断是否硬盘的容量已经到达了极限，如果是这样,删除一些缓存文件。
+     * evictAboveSize()是具体删除文件的方法，其使用了LRU
      * Test if the cache size has exceeded its limits, and if so, evict some files.
      * It also calls maybeUpdateFileCacheSize
-     *
      * This method uses mLock for synchronization purposes.
      */
     private void maybeEvictFilesInCacheDir() throws IOException {
         synchronized (mLock) {
             boolean calculatedRightNow = maybeUpdateFileCacheSize();
 
+            //更新mCacheSizeLimit
             // Update the size limit (mCacheSizeLimit)
             updateFileCacheSizeLimit();
 
@@ -516,13 +515,12 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
 
             // If size has exceeded the size limit, evict some files
             if (cacheSize > mCacheSizeLimit) {
-                evictAboveSize(
-                        mCacheSizeLimit * 9 / 10,
-                        CacheEventListener.EvictionReason.CACHE_FULL); // 90%
+                evictAboveSize(mCacheSizeLimit * 9 / 10, CacheEventListener.EvictionReason.CACHE_FULL); // 90%
             }
         }
     }
 
+    //具体删除缓存文件的方法，先将文件按时间排序，然后删除缓存文件直至不再超出内存限制
     @GuardedBy("mLock")
     private void evictAboveSize(
             long desiredSize,
@@ -723,6 +721,7 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
     }
 
     /**
+     * 如果文件缓存大小没有被计算过，或者已经到了再次计算的周期，那么就调用更新CacheStats和mResourceIndex
      * If file cache size is not calculated or if it was calculated
      * a long time ago (FILECACHE_SIZE_UPDATE_PERIOD_MS) recalculated from file listing.
      * @return true if it was recalculated, false otherwise.
@@ -738,6 +737,7 @@ public class DiskStorageCache implements FileCache, DiskTrimmable {
         return false;
     }
 
+    //具体更新CacheStats和mResourceIndex的逻辑
     @GuardedBy("mLock")
     private boolean maybeUpdateFileCacheSizeAndIndex() {
         long size = 0;

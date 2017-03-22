@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 /**
- * 默认的DiskStorage的实现，包换了'simple' and 'sharded' 的实现，通过一个SubdirectorySupplier创建
+ * 默认的DiskStorage的实现，通过一个SubdirectorySupplier创建
  * The default disk storage implementation. Subsumes both 'simple' and 'sharded' implementations
  * via a new SubdirectorySupplier.
  */
@@ -41,9 +41,9 @@ public class DefaultDiskStorage implements DiskStorage {
 
     private static final Class<?> TAG = DefaultDiskStorage.class;
 
-    //内容文件的扩展名
+    //内容文件的扩展名，一个缓存条目在Inserter.commit()之后会改成这个后缀
     private static final String CONTENT_FILE_EXTENSION = ".cnt";
-    //临时文件的扩展名
+    //临时文件的扩展名Inserter.writeData()之后Inserter.commit()之前，为这个后缀
     private static final String TEMP_FILE_EXTENSION = ".tmp";
     //默认的磁盘存储版本前缀
     private static final String DEFAULT_DISK_STORAGE_VERSION_PREFIX = "v2";
@@ -64,13 +64,13 @@ public class DefaultDiskStorage implements DiskStorage {
     private static final int SHARDING_BUCKET_COUNT = 100;
 
     /**
-     * 我们将清理比这个时间更老的临时文件
+     * 我们将清理存在时间比这个时间更长的临时文件
      * We will allow purging of any temp files older than this.
      */
     static final long TEMP_FILE_LIFETIME_MS = TimeUnit.MINUTES.toMillis(30);
 
     /**
-     * 使用的基本的缓存目录
+     * 缓存使用的缓存根目录
      * The base directory used for the cache
      */
     private final File mRootDirectory;
@@ -240,7 +240,7 @@ public class DefaultDiskStorage implements DiskStorage {
     }
 
     /**
-     * 计算应该返回哪一个CONTENT file通过被给于的key
+     * 通过id返回对应的缓存文件
      * Calculates which should be the CONTENT file for the given key
      */
     @VisibleForTesting
@@ -249,7 +249,7 @@ public class DefaultDiskStorage implements DiskStorage {
     }
 
     /**
-     * 通过key获取储存文件的目录
+     * 通过id获取缓存文件所在的文件夹路径
      * Gets the directory to use to store the given key
      * @param resourceId the id of the file we're going to store
      * @return the directory to store the file in
@@ -260,7 +260,7 @@ public class DefaultDiskStorage implements DiskStorage {
     }
 
     /**
-     * 通过key获取储存文件的目录文件
+     * 通过id获取缓存文件所在的文件夹
      * Gets the directory to use to store the given key
      * @param resourceId the id of the file we're going to store
      * @return the directory to store the file in
@@ -271,7 +271,7 @@ public class DefaultDiskStorage implements DiskStorage {
 
     /**
      * 实现了{@link FileTreeVisitor}去遍历sharded files中所有的文件并且收集其中的有效文件
-     * 这里的有效文件是 FileType.CONTENT 后缀的文件，将有效的文件以 key和file对储存成List
+     * 这里的有效文件是 FileType.CONTENT 后缀的文件，将有效的文件以id和file构成EntryImpl，储存为List。
      * Implementation of {@link FileTreeVisitor} to iterate over all the sharded files and
      * collect those valid content files. It's used in entriesIterator method.
      */
@@ -302,14 +302,13 @@ public class DefaultDiskStorage implements DiskStorage {
     }
 
     /**
+     *
      * 实现了{@link FileTreeVisitor}去访问某文件夹中所有文件，
-     * 然后删除所有不需要的文件和文件夹例如：mVersionDirectory、和除内容文件已经临时文件以外的文件
-     * 这样也摆脱的文件的碎块
+     * 然后删除所有不需要的文件和文件夹例如：已经达到衰老时间的临时文件。
      * This implements a  {@link FileTreeVisitor} to iterate over all the files in mDirectory
      * and delete any unexpected file or directory. It also gets rid of any empty directory in
      * the shard.
      * 这作为一个便捷的方式来检查mVersionDirectory中的状况。
-     *
      * As a shortcut it checks that things are inside (current) mVersionDirectory. If it's not
      * then it's directly deleted. If it's inside then it checks if it's a recognized file and
      * if it's in the correct shard according to its name (checkShard method). If it's unexpected
@@ -336,7 +335,7 @@ public class DefaultDiskStorage implements DiskStorage {
 
         @Override
         public void postVisitDirectory(File directory) {
-            //如果不是mRootDirectory那么我们部去接触它
+            //如果不是mRootDirectory那么我们不去接触它
             if (!mRootDirectory.equals(directory)) { // if it's root directory we must not touch it
                 if (!insideBaseDirectory) {
                     //如果不是当前版本的目录，我们就将其删除
@@ -363,7 +362,7 @@ public class DefaultDiskStorage implements DiskStorage {
         }
 
         /**
-         * 当且仅当文件不够老,被认为是一个古老的临时文件
+         * 判断临时文件是否够老
          * @return true if and only if the file is not old enough to be considered an old temp file
          */
         private boolean isRecentFile(File file) {
@@ -371,7 +370,7 @@ public class DefaultDiskStorage implements DiskStorage {
         }
     }
 
-    //清理不需要的文件，FileTree.walkFileTree()将会遍历整个文件树
+    //清理不需要的文件，FileTree.walkFileTree()将会遍历整个mRootDirectory的文件树
     @Override
     public void purgeUnexpectedResources() {
         FileTree.walkFileTree(mRootDirectory, new PurgingVisitor());
@@ -444,6 +443,7 @@ public class DefaultDiskStorage implements DiskStorage {
         return query(resourceId, false);
     }
 
+
     @Override
     public boolean touch(String resourceId, Object debugInfo) {
         return query(resourceId, true);
@@ -506,6 +506,7 @@ public class DefaultDiskStorage implements DiskStorage {
         return dumpInfo;
     }
 
+    //获取某一条硬盘缓存的信息
     private DiskDumpInfoEntry dumpCacheEntry(Entry entry) throws IOException {
         EntryImpl entryImpl = (EntryImpl)entry;
         String firstBits = "";
@@ -519,6 +520,7 @@ public class DefaultDiskStorage implements DiskStorage {
         return new DiskDumpInfoEntry(path, type, entryImpl.getSize(), firstBits);
     }
 
+    //用于获取DiskDumpInfoEntry中的type
     private String typeOfBytes(byte[] bytes) {
         if (bytes.length >= 2) {
             if (bytes[0] == (byte) 0xFF && bytes[1] == (byte) 0xD8) {
@@ -536,7 +538,7 @@ public class DefaultDiskStorage implements DiskStorage {
 
     @Override
     /**
-     * 返回一个entries的列表
+     * 返回一个Entries的列表，这里只返回 CONTENT_FILE_EXTENSION 后缀的缓存文件Entry，临时文件对客户端不可见。
      * Returns a list of entries.
      *
      * 这个列表是不可变的
@@ -549,6 +551,7 @@ public class DefaultDiskStorage implements DiskStorage {
     }
 
     /**
+     * Entry的唯一实现
      * Implementation of Entry listed by entriesIterator.
      */
     @VisibleForTesting
@@ -638,7 +641,7 @@ public class DefaultDiskStorage implements DiskStorage {
 
     /**
      * 持有不同的文件信息，这个存储使用(content、tmp)这两个文件扩展名。
-     * *=所有文件名称解析都应该通过这里。创建临时文件也处理,封装命名
+     * 所有文件名称解析都应该通过这里。创建临时文件也在这里处理,封装命名
      * Holds information about the different files this storage uses (content, tmp).
      * All file name parsing should be done through here.
      * Temp files creation is also handled here, to encapsulate naming.
@@ -692,14 +695,12 @@ public class DefaultDiskStorage implements DiskStorage {
         }
     }
 
-    //创建一个写的会话，这种方法的好处就是可以进行更多的并行性写
+    //Inserter的唯一实现
     @VisibleForTesting
-  /* package protected */
     class InserterImpl implements Inserter {
 
         private final String mResourceId;
 
-        /* package protected*/
         @VisibleForTesting
         final File mTemporaryFile;
 
@@ -708,6 +709,7 @@ public class DefaultDiskStorage implements DiskStorage {
             mTemporaryFile = temporaryFile;
         }
 
+        //向WriterCallback提供一个FileOutputStream，以供WriterCallback在客户端中向FileOutputStream写入数据
         @Override
         public void writeData(WriterCallback callback, Object debugInfo) throws IOException {
             FileOutputStream fileStream;
@@ -726,7 +728,7 @@ public class DefaultDiskStorage implements DiskStorage {
             try {
                 CountingOutputStream countingStream = new CountingOutputStream(fileStream);
                 callback.write(countingStream);
-                //以防底层流的关闭方法不flush，我们手动flush',在try / catch中
+                //以防底层流的关闭方法不flush，我们手动在try / catch中flush,
                 // just in case underlying stream's close method doesn't flush:
                 // we flush it manually and inside the try/catch
                 countingStream.flush();
@@ -744,9 +746,9 @@ public class DefaultDiskStorage implements DiskStorage {
             }
         }
 
+        //将临时文件改名成内容文件，这样一来该缓存就对客户端可见了
         @Override
         public BinaryResource commit(Object debugInfo) throws IOException {
-            // the temp resource must be ours!
             File targetFile = getContentFileFor(mResourceId);
 
             try {

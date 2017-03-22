@@ -19,8 +19,7 @@ import bolts.Task;
  * Task factory for the simple disk cache case of attempting to load the image from whichever cache
  * is requested by the image request.
  */
-public class SmallCacheIfRequestedDiskCachePolicy
-        implements DiskCachePolicy {
+public class SmallCacheIfRequestedDiskCachePolicy implements DiskCachePolicy {
 
     private final BufferedDiskCache mDefaultBufferedDiskCache;
     private final BufferedDiskCache mSmallImageBufferedDiskCache;
