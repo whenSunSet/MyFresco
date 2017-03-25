@@ -11,41 +11,41 @@ public interface CacheEventListener {
     void onHit(CacheEvent cacheEvent);
 
     /**
-     * 在获取缓存失败的时候被调用，当被给于一个key的时候
+     * 当被给于一个key去获取缓存，但是失败的时候被调用，
      */
     void onMiss(CacheEvent cacheEvent);
 
     /**
-     * 当开启一个在缓存中储存资源的过程时被调用
+     * 当开启一个写缓存的时候被调用
      */
     void onWriteAttempt(CacheEvent cacheEvent);
 
     /**
-     * 当一个储存资源过程成功的时候被调用
+     * 当写一个缓存成功的时候被调用
      */
     void onWriteSuccess(CacheEvent cacheEvent);
 
     /**
-     * 当异常读取失败的时候被调用
+     * 当出现读取异常的时候被调用
      */
     void onReadException(CacheEvent cacheEvent);
 
     /**
-     * 当一次写的操作失败的时候被调用
+     * 当出现写异常的时候被调用
      */
     void onWriteException(CacheEvent cacheEvent);
 
     /**
-     * 当一个缓存被驱逐的时候被调用
+     * 当一个文件缓存被删除的时候被调用
      */
     void onEviction(CacheEvent cacheEvent);
 
     /**
-     * 当一个完整的缓存被清除的时候被调用
+     * 当所有缓存被清除的时候调用
      */
     void onCleared();
 
-    //一个缓存条目被驱逐的原因
+    //一个文件缓存被删除的原因
     enum EvictionReason {
         CACHE_FULL,
         CONTENT_STALE,

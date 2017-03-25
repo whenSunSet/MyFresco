@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 /**
- * 默认的DiskStorage的实现，通过一个SubdirectorySupplier创建
+ * 默认的DiskStorage的实现
  * The default disk storage implementation. Subsumes both 'simple' and 'sharded' implementations
  * via a new SubdirectorySupplier.
  */

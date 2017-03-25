@@ -7,3 +7,6 @@
 - 2.com.facebook.fresco.samples.showcase：这个下面是Fresco官方源码的完整demo，几乎所有Fresco能做到的功能都有，目前还没有翻译，大家如果想直接学习怎么使用Fresco，可以直接看这里面的代码
 - 3.除了1中说的包，其他的包都是Fresco的源代码，在之后的博客里我会一一讲解。
 - 4.jniLibs：这里是Fresco中使用到的c++代码，主要用于Webp、gif、Jpeg等图片的解码编码，以及一些图形变换操作。
+
+## 二、Fresco的硬盘缓存模块
+[Fresco的硬盘缓存模块博客地址](http://www.jianshu.com/p/ab2124764438)

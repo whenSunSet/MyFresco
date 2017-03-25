@@ -520,7 +520,7 @@ public class DiskStorageCache implements FileCache{
         }
     }
 
-    //具体删除缓存文件的方法，先将文件按时间排序，然后删除缓存文件直至不再超出内存限制
+    //具体删除缓存文件的方法，先将文件按时间排序，然后删除缓存文件直至不再超出硬盘缓存限制
     @GuardedBy("mLock")
     private void evictAboveSize(
             long desiredSize,
@@ -565,7 +565,7 @@ public class DiskStorageCache implements FileCache{
     }
 
     /**
-     *
+     * 将DiskStorage.Entry按比较器的逻辑排好序，然后进行缓存清理
      * If any file timestamp is in the future (beyond now + FUTURE_TIMESTAMP_THRESHOLD_MS), we will
      * set its effective timestamp to 0 (the beginning of unix time), thus sending it to the head of
      * the queue for eviction (entries with the lowest timestamps are evicted first). This is a

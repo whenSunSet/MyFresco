@@ -9,8 +9,8 @@ import android.support.annotation.Nullable;
 import java.io.IOException;
 
 /**
- * 提供一个单独的缓存事件的细节的接口
- * 所有的返回值可能为null，是否为null取决于事件的种类。当预期的返回值是可用的时候去文档中查看每个方法
+ * 当某个缓存事件发生的时候(如缓存命中或是老的缓存被删除)，会产生这样一个缓存事件，然后该缓存事件被送入
+ * CacheEventListener中，便于使用者监听，有些返回值可能会返回null，是否为null取决于事件的种类。
  */
 public interface CacheEvent {
 
@@ -23,44 +23,38 @@ public interface CacheEvent {
     CacheKey getCacheKey();
 
     /**
-     * 从一个缓存条目中获取资源ID
-     *
+     * 获取一个硬盘缓存的id
      * 这个应该在缓存命中、写成功、读或者写失败出现异常的时候被提供
-     *
-     * 它也可能在缓存没有命中的事件中被提供，如果一个ID去缓存的index中找，但是那个ID没有被在储存中找到
      */
     @Nullable
     String getResourceId();
 
     /**
-     * 获取新资源的byte数
-     *
-     * 这个应该在写成功和缓存被驱逐的时候被提供
+     * 获取文件缓存的byte大小
+     * 这个应该在缓存被写成功和缓存被删除的时候被提供
      */
     long getItemSize();
 
     /**
-     * 获取所有储存资源的总byte数
-     *
-     * 这个应该在写成功或者被驱逐的时候被提供
+     * 获取该硬盘缓存使用的空间大小，byte为单位。
+     * 这个应该在缓存被写成功或者缓存被删除的时候被提供
      */
     long getCacheSize();
 
     /**
-     * 获取当前的缓存大小限制byte数值
-     *
-     * 这个应该在驱逐缓存事件时被提供当驱逐是由于要调整限制的大小
+     * 获取当前的硬盘缓存的空间限制，byte为单位
+     * 这个应该在删除缓存的时候被提供，因为一旦要删除缓存，就是因为要调整硬盘缓存的总大小了
      */
     long getCacheLimit();
 
     /**
-     * 获取一个异常当触发了一个读或者写的异常
+     * 当触发了一个读或者写的异常的时候，就返回这个异常
      */
     @Nullable
     IOException getException();
 
     /**
-     * 获取一个item被驱逐的原因在驱逐事件之中
+     * 获取一个文件缓存被删除的原因
      */
     @Nullable
     CacheEventListener.EvictionReason getEvictionReason();

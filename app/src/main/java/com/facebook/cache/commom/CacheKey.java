@@ -36,7 +36,7 @@ public interface CacheKey {
     boolean containsUri(Uri uri);
 
     /**
-     * 返回一个字符串表示的URI的核心缓存键。在包含多个*键的情况下,返回第一个
+     * 返回一个字符串表示的URI的核心缓存键。在包含多个键的情况下,返回第一个
      * Returns a string representation of the URI at the heart of the cache key. In cases of multiple
      * keys being contained, the first is returned.
      */
