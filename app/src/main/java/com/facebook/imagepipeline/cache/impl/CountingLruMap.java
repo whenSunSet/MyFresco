@@ -1,11 +1,12 @@
 package com.facebook.imagepipeline.cache.impl;
 
 /**
- * Created by heshixiyang on 2017/3/16.
+ * Created by heshixiyang on 2017/3/26.
  */
 
+import android.support.annotation.VisibleForTesting;
+
 import com.android.internal.util.Predicate;
-import com.facebook.commom.internal.VisibleForTesting;
 import com.facebook.imagepipeline.cache.ValueDescriptor;
 
 import java.util.ArrayList;
@@ -17,7 +18,8 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
- *
+ * 一个用于储存缓存的LinkedHashMap的包装类
+ * 由于LinkedHashMap维持这一个顺序Key，所以我们可以按插入时间的先后，进行LRU内存清理
  * Map that keeps track of the elements order (according to the LRU policy) and their size.
  */
 @ThreadSafe

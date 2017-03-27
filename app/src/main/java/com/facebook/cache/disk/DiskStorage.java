@@ -183,6 +183,7 @@ public interface DiskStorage {
          * @return the final resource created
          * @exception IOException on errors during the commit
          */
+
         BinaryResource commit(Object debugInfo) throws IOException;
 
         /**

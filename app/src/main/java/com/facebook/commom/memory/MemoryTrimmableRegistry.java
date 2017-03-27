@@ -6,7 +6,8 @@ package com.facebook.commom.memory;
 /**
  * 一个用于维护一个被接受内存事件的class列表的class
  *
- * 如果一个class使用了过多的内存并且需要从系统发出消息，那么他就需要实现MemoryTrimmable接口。
+ * 如果一个class使用了过多的内存，那么他就需要实现MemoryTrimmable接口，然后在MemoryTrimmableRegistry
+ * 的实现类中注册，以接收系统的内存事件
  */
 public interface MemoryTrimmableRegistry {
 

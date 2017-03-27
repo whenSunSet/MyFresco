@@ -6,6 +6,7 @@ package com.facebook.imagepipeline.cache;
 
 import com.facebook.cache.commom.CacheKey;
 import com.facebook.imagepipeline.cache.impl.CountingMemoryCache;
+import com.facebook.imagepipeline.core.impl.ImagePipelineConfig;
 
 /**
  * 图像缓存的数据跟踪接口

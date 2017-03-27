@@ -104,18 +104,32 @@ import javax.annotation.concurrent.GuardedBy;
  *       r.addReference();
  *       return r;
  *     }
+ *
+ * 我的理解：这就是一个包装Value的类，该类只被CloseableReference创建，当使用CloseableReference#of，
+ * 创建一个CloseableReference时，会自动创建一个SharedReference对象，此时会传入一个Value，然后将本对象的mRefCount初始化为1，
+ * 因为有一个CloseableReference使用了Value。除此之外还会在 static的IdentityHashMap sLiveObjects设置一个Value-int的键值对，
+ * 以表示该Value对象有几个SharedReference对象使用，因为相同的Value可以用多个SharedReference包装。
+ *
+ * 当使用CloseableReference#clone或cloneOrNull，创建一个CloseableReference时表示CloseableReference指向的是同一个对象
+ * 此时mRefCount会加1，每将一个CloseableReference close的时候mRefCount会减1。当mRefCount为0的时候，需要使用mResourceReleaser
+ * 将Value资源释放，比如如果Value是Bitmap，那么将Bitmap给recycle()掉。
+ *
+ * 注意：这样一来就有一个问题，因为一个Value可以用多个SharedReference包装，并且sLiveObjects中会保存每个Value使用了多少个SharedReference
+ * 进行包装，如果某个SharedReference的mRefCount归零了，那么该Value对象的资源也就被释放了，此时其他包装该Value对象的SharedReference
+ * 同样都失效了，虽然他们的mRefCount没有归零。所以感觉这是一个Fresco中的bug。好在Fresco中并没有对同一个Value使用多个SharedReference包装
+ * 不过我会尝试去提一个issue，看看Facebook官方如何解释。
+ *
+ * 关于上面一个问题的解释：拿CountingMemoryCache来说，其在使用of()创建一个CloseableReference的时候，使用的ResourceReleaser是自定义的
+ * 那么此时，也可以选择不释放资源，而是等到所有的SharedReference都归零的时候再释放，所以归根到底在使用的时候何时释放资源由ResourceReleaser
+ * 决定。
  */
 @VisibleForTesting
 public class SharedReference<T> {
-    //保存所有的存活对象的引用，所以那些对象的销毁总是发生在SharedReference第一次将其处理的时候
-    //注意：这里并不阻止CloseableReference的被终结，当reference不可达的时候
+    //这个Map保存所有的存活对象的引用，正如上面说的那样，对于一个存活对象，当第一个包装他的SharedReference
+    //失效的时候，这个对象的资源就已经被回收了。
     // Keeps references to all live objects so finalization of those Objects always happens after
     // SharedReference first disposes of it. Note, this does not prevent CloseableReference's from
     // being finalized when the reference is no longer reachable.
-
-    //这里用IdentityHashMap只有两个key指向同一个内存地址的时候，才表示是同一个对象，所以此时可以用来储存一个对象有几个引用指向
-    //但是注意这里的每个对象的引用计数不是随时变化，这里只储存存活的对象，对于该对象的引用计数则不是很准确。
-
     @GuardedBy("itself")
     private static final Map<Object, Integer> sLiveObjects = new IdentityHashMap<>();
 
@@ -127,6 +141,7 @@ public class SharedReference<T> {
     private final ResourceReleaser<T> mResourceReleaser;
 
     /**
+     * 这个构造函数只在CloseableReference#of中调用。调用的时候就表示有一个CloseableReference指向了Value
      * Construct a new shared-reference that will 'own' the supplied {@code value}.
      * The reference count will be set to 1. When the reference count decreases to zero
      * {@code resourceReleaser} will be used to release the {@code value}
@@ -141,10 +156,8 @@ public class SharedReference<T> {
     }
 
     /**
-     * 将一个新创建的SharedReference的指向对象引用储存在map中，如果这个对象已经被储存了，那么给其引用数量加一
-     * Increases the reference count of a live object in the static map. Adds it if it's not
-     * being held.
-     *
+     * 只在构造函数中被调用，所以可以用来表示同一个Value被几个SharedReference包装了
+     * Increases the reference count of a live object in the static map. Adds it if it's not being held.
      * @param value the value to add.
      */
     private static void addLiveReference(Object value) {
@@ -159,7 +172,7 @@ public class SharedReference<T> {
     }
 
     /**
-     * 将某个对象的引用在map中的计数减去一，如果引用计数在减去之后为0，那么将其移除。
+     * 这个方法只在deleteReference()中被调用，表示本SharedReference的mRefCount已经归零，然后对sLiveObjects进行操作。
      * Decreases the reference count of live object from the static map. Removes it if it's reference
      * count has become 0.
      *
@@ -192,7 +205,7 @@ public class SharedReference<T> {
     }
 
     /**
-     * 判断该SharedReference中的引用是否可用。
+     * 判断该SharedReference对象是否可用。只要有一个CloseableReference还存在即为可用
      * Checks if this shared-reference is valid i.e. its reference count is greater than zero.
      * @return true if shared reference is valid
      */
@@ -201,7 +214,7 @@ public class SharedReference<T> {
     }
 
     /**
-     * 判断某个SharedReference中的引用是否可用。
+     * 判断某SharedReference对象是否可用。
      * Checks if the shared-reference is valid i.e. its reference count is greater than zero
      * @return true if the shared reference is valid
      */
@@ -210,7 +223,7 @@ public class SharedReference<T> {
     }
 
     /**
-     * 当SharedReference中的引用指向的对象又多了一个指向引用，先判断是否可用，然后将引用计数加一
+     * 又多了一个CloseableReference指向Value，先判断是否可用，然后将引用计数加一
      * Bump up the reference count for the shared reference
      * Note: The reference must be valid (aka not null) at this point
      */
@@ -220,7 +233,7 @@ public class SharedReference<T> {
     }
 
     /**
-     * 将引用计数减一，如果为0，那么将这个对象释放了，并且将map中的储存删掉
+     * 一个CloseableReference呗关闭了，将引用计数减一，如果为0，那么将Value中的资源用mResourceReleaser释放了
      * Decrement the reference count for the shared reference. If the reference count drops to zero,
      * then dispose of the referenced value
      */
@@ -237,7 +250,7 @@ public class SharedReference<T> {
     }
 
     /**
-     * 先判断是否可用，然后将引用计数减一，并返回减掉后的引用计数
+     * 将引用计数减一。
      * Decrements reference count for the shared reference. Returns value of mRefCount after
      * decrementing
      */

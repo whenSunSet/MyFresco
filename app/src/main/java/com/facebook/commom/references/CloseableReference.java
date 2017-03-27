@@ -69,6 +69,11 @@ import javax.annotation.concurrent.GuardedBy;
  * <p>Do not rely upon the finalizer; the purpose of this class is for expensive resources to
  * be released without waiting for the garbage collector. The finalizer will log an error if
  * the close method has not been called.
+ *
+ * 我的理解：基于SharedReference的智能指针，在调用of()的时候创建一个对象并创建一个SharedReference。在clone()和cloneOrNull()的时候
+ * 创建一个对象然后共享被克隆的CloseableReference的SharedReference。这样一来基于同一个SharedReference的CloseableReference们
+ * 就表示一个Value有多少个引用被指向。当调用CloseableReference的close()的时候表示一个指向Value的引用关闭了，一旦所有指向该Value
+ * 的CloseableReference都关闭，就表示这个Value资源应该被释放了。
  */
 public abstract class CloseableReference<T> implements Cloneable, Closeable {
 
@@ -99,7 +104,8 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     private static volatile boolean sUseFinalizers = true;
 
     /**
-     * 调用者必须保证sharedReference的引用数量不会降到0以下，这样该引用在运行期才是有效的
+     * 调用者必须保证sharedReference的引用数量不会降到0以下，这样该引用在运行期才是有效的。
+     * 这个构造器只由两个of()方法调用
      * The caller should guarantee that reference count of sharedReference is not decreased to zero,
      * so that the reference is valid during execution of this method.
      */
@@ -108,9 +114,8 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
         sharedReference.addReference();
         mRelevantTrace = getTraceOrNull();
     }
-
+    //这个构造器只由两个of()方法调用
     private CloseableReference(T t, ResourceReleaser<T> resourceReleaser) {
-        // Ref-count pre-set to 1
         mSharedReference = new SharedReference<T>(t, resourceReleaser);
         mRelevantTrace = getTraceOrNull();
     }
@@ -130,6 +135,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
+     * 同上
      * Constructs a CloseableReference (wrapping a SharedReference) of T with provided
      * ResourceReleaser<T>. If t is null, this will just return null.
      */
@@ -143,6 +149,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
         }
     }
 
+    //of()的实现方法
     private static <T> CloseableReference<T> makeCloseableReference(
             @Nullable T t,
             ResourceReleaser<T> resourceReleaser) {
@@ -154,7 +161,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
-     * 关闭这个CloseableReference，将SharedReference中的引用删除
+     * 关闭这个CloseableReference，将SharedReference中的引用计数减一
      * Closes this CloseableReference.
      *
      * <p>Decrements the reference count of the underlying object. If it is zero, the object
@@ -175,7 +182,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
-     * 如果没有关闭，那么返回该对象的初始引用
+     * 如果没有关闭，返回Value
      * Returns the underlying Closeable if this reference is not closed yet.
      * Otherwise IllegalStateException is thrown.
      */
@@ -185,7 +192,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
-     * 返回一个新的CloseableReference基于相同的SharedReference，SharedReference中的引用计数加一
+     * 基于相同的SharedReference返回一个新的CloseableReference，SharedReference中的引用计数加一
      * Returns a new CloseableReference to the same underlying SharedReference. The SharedReference
      * ref-count is incremented.
      */
@@ -196,6 +203,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
         return makeCloseableReference();
     }
 
+    //同上不过可能会返回null
     public synchronized CloseableReference<T> cloneOrNull() {
         mRelevantTrace = getTraceOrNull();
         if (isValid()) {
@@ -204,6 +212,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
         return null;
     }
 
+    //clone()和cloneOrNull()的具体实现
     private CloseableReference<T> makeCloseableReference() {
         if (sUseFinalizers) {
             return new CloseableReferenceWithFinalizer<T>(mSharedReference);
@@ -221,6 +230,8 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
+     *
+     *
      * Returns whether CloseableReference instances are currently gathering obtain/clone traces for
      * the purpose of unclosed reference tracking.
      *
@@ -241,7 +252,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
-     * 返回underlying references，只有在测试的时候用
+     * 返回SharedReference，只有在测试的时候用
      * A test-only method to get the underlying references.
      *
      * <p><b>DO NOT USE in application code.</b>
@@ -252,7 +263,7 @@ public abstract class CloseableReference<T> implements Cloneable, Closeable {
     }
 
     /**
-     * 测试的时候用
+     * debug的时候使用
      * Method used for tracking Closeables pointed by CloseableReference.
      * Use only for debugging and logging.
      */

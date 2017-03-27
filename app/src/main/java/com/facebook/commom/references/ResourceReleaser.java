@@ -7,6 +7,7 @@ package com.facebook.commom.references;
  * 一个表示抽象释放资源的接口
  *
  * 有多个组件,由他人共享自己的资源,像池和缓存。应该实现这个接口的类想要执行一些动作，当一个特定的资源不再是必要的
+ * 如Bitmap的recycle()，和流的close()等等
  * @param <T> 由此资源类型的资源管理释放者
  */
 public interface ResourceReleaser<T> {

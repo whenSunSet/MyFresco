@@ -3,6 +3,7 @@ package com.facebook.commom.memory;
 /**
  * Created by heshixiyang on 2017/3/9.
  */
+//判断系统内存是哪一种问题，以调整释放内存的百百分比
 public enum MemoryTrimType {
 
     /**
@@ -37,3 +38,4 @@ public enum MemoryTrimType {
         return mSuggestedTrimRatio;
     }
 }
+
