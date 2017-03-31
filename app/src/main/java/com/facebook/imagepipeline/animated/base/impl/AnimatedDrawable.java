@@ -63,6 +63,7 @@ public class AnimatedDrawable extends AbstractAnimatedDrawable implements Animat
         animator.setRepeatMode(ValueAnimator.RESTART);
         animator.setInterpolator(new LinearInterpolator());
         animator.addUpdateListener(createAnimatorUpdateListener());
+        animator.start();
         return animator;
     }
 

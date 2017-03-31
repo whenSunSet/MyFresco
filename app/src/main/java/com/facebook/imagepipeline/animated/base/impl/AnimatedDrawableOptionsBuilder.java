@@ -1,4 +1,4 @@
-package com.facebook.imagepipeline.animated.base.impl;
+    package com.facebook.imagepipeline.animated.base.impl;
 
 /**
  * Created by Administrator on 2017/3/14 0014.

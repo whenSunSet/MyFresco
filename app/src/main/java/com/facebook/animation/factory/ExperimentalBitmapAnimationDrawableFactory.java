@@ -26,7 +26,7 @@ import com.facebook.imagepipeline.animated.base.AnimatedDrawableCachingBackend;
 import com.facebook.imagepipeline.animated.base.AnimatedImage;
 import com.facebook.imagepipeline.animated.base.impl.AnimatedImageResult;
 import com.facebook.imagepipeline.animated.impl.AnimatedDrawableBackendProvider;
-import com.facebook.imagepipeline.animated.impl.AnimatedFrameCache;
+import com.facebook.animation.bitmap.cache.AnimatedFrameCache;
 import com.facebook.imagepipeline.bitmaps.PlatformBitmapFactory;
 import com.facebook.imagepipeline.cache.impl.CountingMemoryCache;
 import com.facebook.imagepipeline.image.impl.CloseableAnimatedImage;

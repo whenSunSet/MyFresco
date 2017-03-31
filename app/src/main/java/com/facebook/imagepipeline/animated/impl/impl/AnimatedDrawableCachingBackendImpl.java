@@ -13,7 +13,6 @@ import android.graphics.Rect;
 import android.support.v4.util.SparseArrayCompat;
 
 import com.facebook.commom.executors.SerialExecutorService;
-import com.facebook.commom.internal.VisibleForTesting;
 import com.facebook.commom.logging.FLog;
 import com.facebook.commom.references.CloseableReference;
 import com.facebook.commom.references.ResourceReleaser;
@@ -168,7 +167,7 @@ public class AnimatedDrawableCachingBackendImpl extends DelegatingAnimatedDrawab
         return getAnimatedImageResult().getPreviewBitmap();
     }
 
-    @VisibleForTesting
+    @android.support.annotation.VisibleForTesting
     CloseableReference<Bitmap> getBitmapForFrameBlocking(int frameNumber) {
         mCurrentFrameIndex = frameNumber;
         CloseableReference<Bitmap> result = getBitmapForFrameInternal(frameNumber, true);
@@ -533,7 +532,7 @@ public class AnimatedDrawableCachingBackendImpl extends DelegatingAnimatedDrawab
                 mAnimatedDrawableBackend.hasPreDecodedFrame(frameNumber);
     }
 
-    @VisibleForTesting
+    @android.support.annotation.VisibleForTesting
     synchronized Map<Integer, Task<?>> getDecodesInFlight() {
         Map<Integer, Task<?>> map = new HashMap<Integer, Task<?>>();
         for (int i = 0; i < mDecodesInFlight.size(); i++) {
@@ -542,7 +541,7 @@ public class AnimatedDrawableCachingBackendImpl extends DelegatingAnimatedDrawab
         return map;
     }
 
-    @VisibleForTesting
+    @android.support.annotation.VisibleForTesting
     synchronized Set<Integer> getFramesCached() {
         Set<Integer> set = new HashSet<Integer>(mCachedBitmaps.size());
         for (int i = 0; i < mCachedBitmaps.size(); i++) {

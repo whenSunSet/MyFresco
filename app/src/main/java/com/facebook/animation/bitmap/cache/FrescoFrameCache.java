@@ -10,7 +10,6 @@ import com.facebook.commom.internal.Preconditions;
 import com.facebook.commom.references.CloseableReference;
 import com.facebook.animation.bitmap.BitmapAnimationBackend;
 import com.facebook.animation.bitmap.BitmapFrameCache;
-import com.facebook.imagepipeline.animated.impl.AnimatedFrameCache;
 import com.facebook.imagepipeline.image.impl.CloseableBitmap;
 import com.facebook.imagepipeline.image.impl.CloseableImage;
 import com.facebook.imagepipeline.image.impl.CloseableStaticBitmap;

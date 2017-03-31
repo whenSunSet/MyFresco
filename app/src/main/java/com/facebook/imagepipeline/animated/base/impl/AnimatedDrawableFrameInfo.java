@@ -55,3 +55,4 @@ public class AnimatedDrawableFrameInfo {
         this.disposalMethod = disposalMethod;
     }
 }
+

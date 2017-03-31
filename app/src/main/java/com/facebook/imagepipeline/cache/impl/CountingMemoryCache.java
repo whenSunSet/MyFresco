@@ -4,6 +4,7 @@ package com.facebook.imagepipeline.cache.impl;
  * Created by heshixiyang on 2017/3/26.
  */
 
+import android.graphics.Bitmap;
 import android.os.SystemClock;
 import android.support.annotation.VisibleForTesting;
 
@@ -14,10 +15,13 @@ import com.facebook.commom.memory.MemoryTrimType;
 import com.facebook.commom.memory.MemoryTrimmable;
 import com.facebook.commom.references.CloseableReference;
 import com.facebook.commom.references.ResourceReleaser;
+import com.facebook.imagepipeline.bitmaps.PlatformBitmapFactory;
 import com.facebook.imagepipeline.cache.MemoryCache;
 import com.facebook.imagepipeline.cache.ValueDescriptor;
 
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nullable;
@@ -134,10 +138,16 @@ public class CountingMemoryCache<K, V> implements MemoryCache<K, V>, MemoryTrimm
     @GuardedBy("this")
     private long mLastCacheParamsCheck;
 
+    @GuardedBy("this")
+    @VisibleForTesting
+    final Map<Bitmap, Object> mOtherEntries = new WeakHashMap<>();
+
     public CountingMemoryCache(
             ValueDescriptor<V> valueDescriptor,
             CacheTrimStrategy cacheTrimStrategy,
-            Supplier<MemoryCacheParams> memoryCacheParamsSupplier) {
+            Supplier<MemoryCacheParams> memoryCacheParamsSupplier,
+            PlatformBitmapFactory platformBitmapFactory,
+            boolean isExternalCreatedBitmapLogEnabled) {
         mValueDescriptor = valueDescriptor;
         mExclusiveEntries = new CountingLruMap<>(wrapValueDescriptor(valueDescriptor));
         mCachedEntries = new CountingLruMap<>(wrapValueDescriptor(valueDescriptor));
@@ -146,6 +156,17 @@ public class CountingMemoryCache<K, V> implements MemoryCache<K, V>, MemoryTrimm
         mMemoryCacheParams = mMemoryCacheParamsSupplier.get();
         mLastCacheParamsCheck = SystemClock.uptimeMillis();
 
+        if (isExternalCreatedBitmapLogEnabled) {
+            platformBitmapFactory.setCreationListener(
+                    new PlatformBitmapFactory.BitmapCreationObserver() {
+                        @Override
+                        public void onBitmapCreated(
+                                Bitmap bitmap,
+                                Object callerContext) {
+                            mOtherEntries.put(bitmap, callerContext);
+                        }
+                    });
+        }
     }
 
     private ValueDescriptor<Entry<K, V>> wrapValueDescriptor(

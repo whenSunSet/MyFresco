@@ -6,19 +6,22 @@ package com.facebook.imagepipeline.animated.base;
 
 import android.graphics.Bitmap;
 
+import com.facebook.animated.gif.GifFrame;
+import com.facebook.animated.webp.WebPFrame;
+
 /**
- * 一个动画image的帧的公共接口
+ * 动画的一个帧的接口，只有{@link GifFrame}和{@link WebPFrame}实现了这个接口
  */
 public interface AnimatedImageFrame {
 
     /**
-     * 配置实例。这个实例将释放本地资源。一旦调用，其他该实例上的方法可能抛出异常
+     * * 将本地内存byte数组资源释放掉，一旦调用，其他使用了同一本地内存的实例上调用该方法会抛出异常
      * 注意,底层的本机资源可能不被真正释放,直到所有的相关实例{@link AnimatedImage}都被处理
      */
     void dispose();
 
     /**
-     * 渲染帧到指定的bitmap，bitmap必须有一个宽度和高度*至少指定的宽度和高度,必须在8888年RGBA颜色格式。
+     * 渲染{@link GifFrame}和{@link WebPFrame}中帧数据到指定的bitmap，bitmap需要指定的宽度和高度,必须在8888年RGBA颜色格式。
      *
      * @param width the width to render to (the image is scaled to this width)
      * @param height the height to render to (the image is scaled to this height)
@@ -47,13 +50,13 @@ public interface AnimatedImageFrame {
     int getHeight();
 
     /**
-     * 获取frame基于canvas的位移x
+     * 获取帧基于canvas的位移x
      * @return the x-offset of the frame
      */
     int getXOffset();
 
     /**
-     * 获取frame基于canvas的位移y
+     * 获取帧基于canvas的位移y
      * @return the y-offset of the frame
      */
     int getYOffset();

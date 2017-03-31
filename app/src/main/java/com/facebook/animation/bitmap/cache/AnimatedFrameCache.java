@@ -1,4 +1,4 @@
-package com.facebook.imagepipeline.animated.impl;
+package com.facebook.animation.bitmap.cache;
 
 /**
  * Created by Administrator on 2017/3/14 0014.

@@ -12,10 +12,8 @@ import com.facebook.imagepipeline.image.impl.CloseableImage;
 public interface AnimatedDrawableFactory {
 
     /**
-     * 创建一个{@link AnimatedDrawable}基于一个{@link AnimatedImage}
-     *
+     * 创建一个基于{@link AnimatedImage}的{@link AnimatedDrawable}
      * Creates an {@link AnimatedDrawable} based on an {@link AnimatedImage}.
-     *
      * @param closeableImage the result of the code
      * @return a newly constructed {@link Drawable}
      */

@@ -4,6 +4,7 @@ package com.facebook.commom.internal;
  * Created by Administrator on 2017/3/13 0013.
  */
 import java.lang.annotation.ElementType;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 

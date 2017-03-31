@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
 
+import com.facebook.commom.executors.impl.UiThreadImmediateExecutorService;
 import com.facebook.commom.time.MonotonicClock;
 import com.facebook.imagepipeline.animated.base.AnimatedDrawableBackend;
 import com.facebook.imagepipeline.animated.base.AnimatedDrawableCachingBackend;
@@ -21,6 +22,8 @@ import com.facebook.imagepipeline.animated.base.impl.AnimatedImageResult;
 import com.facebook.imagepipeline.animated.factory.AnimatedDrawableFactory;
 import com.facebook.imagepipeline.animated.impl.AnimatedDrawableBackendProvider;
 import com.facebook.imagepipeline.animated.impl.AnimatedDrawableCachingBackendImplProvider;
+import com.facebook.imagepipeline.animated.impl.impl.AnimatedDrawableBackendImpl;
+import com.facebook.imagepipeline.animated.impl.impl.AnimatedDrawableCachingBackendImpl;
 import com.facebook.imagepipeline.animated.impl.impl.AnimatedDrawableDiagnosticsImpl;
 import com.facebook.imagepipeline.animated.impl.impl.AnimatedDrawableDiagnosticsNoop;
 import com.facebook.imagepipeline.animated.util.AnimatedDrawableUtil;
@@ -30,14 +33,23 @@ import com.facebook.imagepipeline.image.impl.CloseableImage;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
- * {@link AnimatedDrawable}.的工厂的实现
+ * {@link AnimatedDrawable}.的工厂的实现，只由{@link AnimatedFactoryImpl}创建
  * Factory for instances of {@link AnimatedDrawable}.
  */
 public class AnimatedDrawableFactoryImpl implements AnimatedDrawableFactory {
 
+    /**
+     * 一般产生的是{@link AnimatedDrawableBackendImpl}
+     */
     private final AnimatedDrawableBackendProvider mAnimatedDrawableBackendProvider;
+    /**
+     * 一般产生的是{@link AnimatedDrawableCachingBackendImpl}用于包装{@link AnimatedDrawableBackendImpl}
+     */
     private final AnimatedDrawableCachingBackendImplProvider mAnimatedDrawableCachingBackendProvider;
     private final AnimatedDrawableUtil mAnimatedDrawableUtil;
+    /**
+     *{@link UiThreadImmediateExecutorService#getInstance} 将事件传回主线程的ExecutorService
+     */
     private final ScheduledExecutorService mScheduledExecutorServiceForUiThread;
     private final MonotonicClock mMonotonicClock;
     private final Resources mResources;
@@ -55,7 +67,6 @@ public class AnimatedDrawableFactoryImpl implements AnimatedDrawableFactory {
         mMonotonicClock = new MonotonicClock() {
             @Override
             public long now() {
-                // Must be SystemClock.uptimeMillis to be compatible with what Android's View uses.
                 return SystemClock.uptimeMillis();
             }
         };
@@ -63,9 +74,9 @@ public class AnimatedDrawableFactoryImpl implements AnimatedDrawableFactory {
     }
 
     /**
-     * 通过 {@link CloseableImage}CloseableAnimatedImage，创建一个{@link AnimatedDrawable}，其为
-     * Creates an {@link AnimatedDrawable} based on an {@link CloseableImage} which should be a
-     * CloseableAnimatedImage.
+     * 通过 {@link CloseableAnimatedImage}(A)，创建一个{@link AnimatedDrawable}，A由{@link AnimatedImageFactoryImpl#decodeGif}或{@link AnimatedImageFactoryImpl#decodeWebP}提供
+     * Creates an {@link AnimatedDrawable} based on an {@link CloseableImage} which should be a CloseableAnimatedImage.
+     * 然后再调用{@link #create(AnimatedImageResult, AnimatedDrawableOptions)}
      *
      * @param closeableImage The CloseableAnimatedImage to use for the AnimatedDrawable
      * @return a newly constructed {@link AnimatedDrawable}
@@ -81,11 +92,15 @@ public class AnimatedDrawableFactoryImpl implements AnimatedDrawableFactory {
     }
 
     /**
-     * 通过{@link AnimatedImage}创建一个{@link AnimatedDrawable}
+     * 通过{@link AnimatedImageResult}(A)创建一个{@link AnimatedDrawable}
      * Creates an {@link AnimatedDrawable} based on an {@link AnimatedImage}.
+     *
+     * 1.通过{@link #mAnimatedDrawableBackendProvider}加上A，创建一个{@link AnimatedDrawableBackendImpl}(B)
+     * 2.调用{@link #createAnimatedDrawable}传入B和 options
      *
      * @param animatedImageResult the result of the code
      * @param options additional options
+     *                使用的是{@link AnimatedDrawableOptions#DEFAULTS}
      * @return a newly constructed {@link AnimatedDrawable}
      */
     private AnimatedDrawable create(
@@ -105,6 +120,15 @@ public class AnimatedDrawableFactoryImpl implements AnimatedDrawableFactory {
         return null;
     }
 
+    /**
+     * 1.将传入的animatedDrawableBackend通过{@link #mAnimatedDrawableCachingBackendProvider}用{@link AnimatedDrawableCachingBackendImpl}(A)包装
+     * 2.通过{@link AnimatedDrawableOptions#enableDebugging}判断是否为debug模式，如果是就创建一个{@link AnimatedDrawableDiagnostics}(B)用于在动画上绘制一层debug信息
+     * 3.使用A、B、{@link #mScheduledExecutorServiceForUiThread}和{@link #mMonotonicClock}创建一个{@link AnimatedDrawable}
+     *
+     * @param options
+     * @param animatedDrawableBackend
+     * @return
+     */
     private AnimatedDrawable createAnimatedDrawable(
             AnimatedDrawableOptions options,
             AnimatedDrawableBackend animatedDrawableBackend) {

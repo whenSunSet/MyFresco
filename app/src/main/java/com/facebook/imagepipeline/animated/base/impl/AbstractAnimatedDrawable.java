@@ -4,6 +4,7 @@ package com.facebook.imagepipeline.animated.base.impl;
  * Created by heshixiyang on 2017/3/16.
  */
 
+import android.animation.ValueAnimator;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,12 +14,13 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
+import android.view.View;
+import android.widget.ImageView;
 
-import com.facebook.commom.internal.VisibleForTesting;
+import com.facebook.base.DrawableWithCaches;
 import com.facebook.commom.logging.FLog;
 import com.facebook.commom.references.CloseableReference;
 import com.facebook.commom.time.MonotonicClock;
-import com.facebook.base.DrawableWithCaches;
 import com.facebook.imagepipeline.animated.base.AnimatedDrawableBackend;
 import com.facebook.imagepipeline.animated.base.AnimatedDrawableCachingBackend;
 import com.facebook.imagepipeline.animated.base.AnimatedDrawableDiagnostics;
@@ -35,6 +37,24 @@ import java.util.concurrent.TimeUnit;
  * {@link AnimatedDrawableBackend} interface. The drawable can work either as an {@link Animatable}
  * where the client calls start/stop to animate it or it can work as a level-based drawable where
  * the client drives the animation by calling {@link Drawable#setLevel}.
+ *
+ * 这个类有两种方式让动画运行：
+ * 1.在{@link AnimatedDrawable}中使用{@link ValueAnimator}(A)运行动画：
+ *      原理：A.start()之后会不断的调用{@link #setLevel}-->{@link #onLevelChange}-->{@link #doInvalidateSelf}
+ *      -->{@link #invalidateSelf}-->{@link Drawable.Callback#invalidateDrawable}（由于Drawable是附着在View上的，
+ *      所以这里调用的就是{@link View#invalidateDrawable}）-->{@link View#invalidate}-->{@link ImageView#onDraw}
+ *      -->{@link #draw},在最后的draw中绘制当前的帧，又由于{@link #setLevel}是不断的被调用直至动画的最后一帧，
+ *      所以这样一来会完整地运行动画
+ * 2.直接调用{@link #start}:
+ *      原理：{@link #start}-->{@link Drawable#scheduleSelf(Runnable mStartTask,long)}-->{@link Drawable.Callback#scheduleSelf}
+ *      （由于Drawable是附着在View上的，所以这里调用的就是{@link View#scheduleDrawable}）-->{@link #mStartTask}
+ *      -->{@link #onStart}-->{@link #scheduleSelf(Runnable mNextFrameTask,long)}-->{@link #doInvalidateSelf}
+ *      -->{@link #invalidateSelf}-->{@link Drawable.Callback#invalidateDrawable}（由于Drawable是附着在View上的，
+ *      所以这里调用的就是{@link View#invalidateDrawable}）-->{@link View#invalidate}-->{@link ImageView#onDraw}
+ *      -->{@link #draw},在最后的draw中绘制第一帧并再次调用{@link #scheduleSelf(Runnable mNextFrameTask,long)}，
+ *      又因为在{@link #onStart}调用了{@link #scheduleSelf(Runnable mNextFrameTask,long)}所以此时第二帧也准备好了
+ *      -->{@link #mNextFrameTask}-->{@link #onNextFrame()}-->{@link #computeAndScheduleNextFrame}-->{@link #doInvalidateSelf}
+ *      就这样一直调用{@link #scheduleSelf(Runnable mNextFrameTask,long)}直至动画结束
  */
 public abstract class AbstractAnimatedDrawable extends Drawable implements Animatable, DrawableWithCaches {
 
@@ -156,7 +176,7 @@ public abstract class AbstractAnimatedDrawable extends Drawable implements Anima
         mTransparentPaint.setColor(Color.TRANSPARENT);
         mTransparentPaint.setStyle(Paint.Style.FILL);
 
-        //当没有产生动画的时候，显示第一张
+        //当没有产生动画的时候，显示第一张预览图
         // Show last frame when not animating.
         resetToPreviewFrame();
     }
@@ -177,42 +197,6 @@ public abstract class AbstractAnimatedDrawable extends Drawable implements Anima
         }
     }
 
-    /**
-     * 设置logged时候的id，在debug的时候使用
-     * Sets an id that will be logged with any of the logging calls. Useful for debugging.
-     *
-     * @param logId the id to log
-     */
-    public void setLogId(String logId) {
-        mLogId = logId;
-    }
-
-    @Override
-    public int getIntrinsicWidth() {
-        return mAnimatedDrawableBackend.getWidth();
-    }
-
-    @Override
-    public int getIntrinsicHeight() {
-        return mAnimatedDrawableBackend.getHeight();
-    }
-
-    @Override
-    public void setAlpha(int alpha) {
-        mPaint.setAlpha(alpha);
-        doInvalidateSelf();
-    }
-
-    @Override
-    public void setColorFilter(ColorFilter cf) {
-        mPaint.setColorFilter(cf);
-        doInvalidateSelf();
-    }
-
-    @Override
-    public int getOpacity() {
-        return PixelFormat.TRANSLUCENT;
-    }
 
     @Override
     protected void onBoundsChange(Rect bounds) {
@@ -429,15 +413,6 @@ public abstract class AbstractAnimatedDrawable extends Drawable implements Anima
         scheduleSelf(mInvalidateTask, POLL_FOR_RENDERED_FRAME_MS);
     }
 
-    /**
-     *
-     * Returns whether a previous call to {@link #draw} would have rendered a frame.
-     *
-     * @return whether a previous call to {@link #draw} would have rendered a frame
-     */
-    public boolean didLastDrawRender() {
-        return mLastDrawnFrame != null;
-    }
 
     /**
      * 绘制指定的帧到canvas上
@@ -519,20 +494,6 @@ public abstract class AbstractAnimatedDrawable extends Drawable implements Anima
         invalidateSelf();
     }
 
-    @VisibleForTesting
-    boolean isWaitingForDraw() {
-        return mWaitingForDraw;
-    }
-
-    @VisibleForTesting
-    boolean isWaitingForNextFrame() {
-        return mNextFrameTaskMs != -1;
-    }
-
-    @VisibleForTesting
-    int getScheduledFrameNumber() {
-        return mScheduledFrameNumber;
-    }
 
     @Override
     public void start() {
@@ -596,6 +557,33 @@ public abstract class AbstractAnimatedDrawable extends Drawable implements Anima
         mAnimatedDrawableBackend.dropCaches();
     }
 
+    //--------------------------下面都是get set方法--------------------------
+
+    /**
+     *
+     * Returns whether a previous call to {@link #draw} would have rendered a frame.
+     *
+     * @return whether a previous call to {@link #draw} would have rendered a frame
+     */
+    public boolean didLastDrawRender() {
+        return mLastDrawnFrame != null;
+    }
+
+    @android.support.annotation.VisibleForTesting
+    boolean isWaitingForDraw() {
+        return mWaitingForDraw;
+    }
+
+    @android.support.annotation.VisibleForTesting
+    boolean isWaitingForNextFrame() {
+        return mNextFrameTaskMs != -1;
+    }
+
+    @android.support.annotation.VisibleForTesting
+    int getScheduledFrameNumber() {
+        return mScheduledFrameNumber;
+    }
+
     /**
      * Get the animation duration of 1 loop.
      * @return the animation duration in ms
@@ -624,5 +612,42 @@ public abstract class AbstractAnimatedDrawable extends Drawable implements Anima
 
     protected AnimatedDrawableCachingBackend getAnimatedDrawableBackend() {
         return mAnimatedDrawableBackend;
+    }
+
+    /**
+     * 设置logged时候的id，在debug的时候使用
+     * Sets an id that will be logged with any of the logging calls. Useful for debugging.
+     *
+     * @param logId the id to log
+     */
+    public void setLogId(String logId) {
+        mLogId = logId;
+    }
+
+    @Override
+    public int getIntrinsicWidth() {
+        return mAnimatedDrawableBackend.getWidth();
+    }
+
+    @Override
+    public int getIntrinsicHeight() {
+        return mAnimatedDrawableBackend.getHeight();
+    }
+
+    @Override
+    public void setAlpha(int alpha) {
+        mPaint.setAlpha(alpha);
+        doInvalidateSelf();
+    }
+
+    @Override
+    public void setColorFilter(ColorFilter cf) {
+        mPaint.setColorFilter(cf);
+        doInvalidateSelf();
+    }
+
+    @Override
+    public int getOpacity() {
+        return PixelFormat.TRANSLUCENT;
     }
 }

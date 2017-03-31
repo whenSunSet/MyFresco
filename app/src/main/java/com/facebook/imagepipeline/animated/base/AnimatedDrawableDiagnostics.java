@@ -11,7 +11,7 @@ import com.facebook.imagepipeline.animated.base.impl.AnimatedDrawable;
 
 
 /**
- * 对于{@link AnimatedDrawable}的Diagnostics接口
+ * 用来在动画上面绘制debug信息的接口
  * Diagnostics interface for {@link AnimatedDrawable}.
  */
 public interface AnimatedDrawableDiagnostics {

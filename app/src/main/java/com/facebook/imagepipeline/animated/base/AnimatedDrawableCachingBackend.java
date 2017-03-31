@@ -10,7 +10,7 @@ import android.graphics.Rect;
 import com.facebook.commom.references.CloseableReference;
 
 /**
- * 一个{@link AnimatedDrawableBackend} 的特别版本，其可以添加高速缓存和预读
+ * 一个{@link AnimatedDrawableBackend}的包装，其可以添加高速缓存和预读
  * A specialized version of {@link AnimatedDrawableBackend} that adds caching and prefetching.
  */
 public interface AnimatedDrawableCachingBackend extends AnimatedDrawableBackend {
@@ -42,7 +42,7 @@ public interface AnimatedDrawableCachingBackend extends AnimatedDrawableBackend 
     CloseableReference<Bitmap> getPreviewBitmap();
 
     /**
-     * 附加一个后端状态的字符串，之后可能有用的调试
+     * 可能有用的调试
      * Appends a string about the state of the backend that might be useful for debugging.
      *
      * @param sb the builder to append to

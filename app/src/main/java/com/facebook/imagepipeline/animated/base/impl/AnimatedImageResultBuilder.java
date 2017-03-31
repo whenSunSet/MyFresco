@@ -6,8 +6,11 @@ package com.facebook.imagepipeline.animated.base.impl;
 
 import android.graphics.Bitmap;
 
+import com.facebook.animated.gif.GifImage;
+import com.facebook.animated.webp.WebPImage;
 import com.facebook.commom.references.CloseableReference;
 import com.facebook.imagepipeline.animated.base.AnimatedImage;
+import com.facebook.imagepipeline.animated.factory.impl.AnimatedImageFactoryImpl;
 
 import java.util.List;
 
@@ -17,9 +20,21 @@ import java.util.List;
  */
 public class AnimatedImageResultBuilder {
 
+    /**
+     * {@link GifImage}或{@link WebPImage}的实例，储存该动画的所有数据
+     */
     private final AnimatedImage mImage;
+    /**
+     * 动画的预览帧，在{@link AnimatedImageFactoryImpl#createPreviewBitmap}中被创建
+     */
     private CloseableReference<Bitmap> mPreviewBitmap;
+    /**
+     * 动画的所有帧，在{@link AnimatedImageFactoryImpl#decodeAllFrames}中被创建
+     */
     private List<CloseableReference<Bitmap>> mDecodedFrames;
+    /**
+     * 预览帧是使用第一帧还是最后一帧，在{@link AnimatedImageFactoryImpl#getCloseableImage}中被设置
+     */
     private int mFrameForPreview;
 
     AnimatedImageResultBuilder(AnimatedImage image) {
@@ -28,7 +43,6 @@ public class AnimatedImageResultBuilder {
 
     /**
      * Gets the image for the result.
-     *
      * @return the image
      */
     public AnimatedImage getImage() {

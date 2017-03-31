@@ -25,3 +25,4 @@ public interface AnimatedDrawableCachingBackendImplProvider {
             AnimatedDrawableBackend animatedDrawableBackend,
             AnimatedDrawableOptions options);
 }
+
