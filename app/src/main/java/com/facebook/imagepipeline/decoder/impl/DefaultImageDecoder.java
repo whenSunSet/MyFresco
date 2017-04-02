@@ -12,6 +12,7 @@ import com.facebook.imageformat.DefaultImageFormats;
 import com.facebook.imageformat.ImageFormat;
 import com.facebook.imageformat.ImageFormatChecker;
 import com.facebook.imagepipeline.animated.factory.AnimatedImageFactory;
+import com.facebook.imagepipeline.animated.factory.impl.AnimatedImageFactoryImpl;
 import com.facebook.imagepipeline.common.ImageDecodeOptions;
 import com.facebook.imagepipeline.decoder.ImageDecoder;
 import com.facebook.imagepipeline.image.impl.CloseableImage;
@@ -34,7 +35,6 @@ import javax.annotation.Nullable;
  * <p> ImageDecoder implements image type recognition and passes decode requests to
  * specialized methods implemented by subclasses.
  *
- *
  * On dalvik, it produces 'pinned' purgeable bitmaps.
  *
  * <p> Pinned purgeables behave as specified in
@@ -46,10 +46,18 @@ import javax.annotation.Nullable;
  */
 public class DefaultImageDecoder implements ImageDecoder {
 
+    /**
+     * 解码Gif和Webp的对象，默认的实现是{@link AnimatedImageFactoryImpl}
+     */
     private final AnimatedImageFactory mAnimatedImageFactory;
     private final Bitmap.Config mBitmapConfig;
+    /**
+     * 解码静态图片的对象，不同的系统版本的实现不同
+     */
     private final PlatformDecoder mPlatformDecoder;
-
+    /**
+     * 在{@link #decode}中最后被调用，用于根据图片类型判断到底使用哪种解码器
+     */
     private final ImageDecoder mDefaultDecoder = new ImageDecoder() {
         @Override
         public CloseableImage decode(
@@ -93,13 +101,18 @@ public class DefaultImageDecoder implements ImageDecoder {
     }
 
     /**
-     * Decodes image.
+     * 一般是调用了{@link ImageDecoder#decode}之后，这个方法就被调用了。
+     * 1.如果传入参数options，中有使用者定义的解码器，那么就使用用户定义的解码器，然后直接返回
+     * 2.使用ImageFormatChecker检测传入的EncodedImage的资源格式
+     * 3.如果本类中的{@link #mCustomDecoders}之前就被使用者设置了，那么就用其进行解码
+     * 4.最后调用{@link #mDefaultDecoder}的decode()方法。
      *
      * @param encodedImage input image (encoded bytes plus meta data)
-     * @param length if image type supports decoding incomplete image then determines where
-     *   the image data should be cut for decoding.
+     * @param length 如果图片类型支持残缺解码，那么这个参数就代表到底解码多少图片
      * @param qualityInfo quality information for the image
+     *                    图片质量信息
      * @param options options that cange decode behavior
+     *                解码时候可以选择的参数
      */
     @Override
     public CloseableImage decode(
@@ -126,7 +139,11 @@ public class DefaultImageDecoder implements ImageDecoder {
     }
 
     /**
+     * 解码Gif动画
      * Decodes gif into CloseableImage.
+     *
+     * 1.判断传入参数options，是否只是需要静态图片，如果是那么调用{@link #decodeStaticImage}
+     * 2.如果不是那么调用{@link AnimatedImageFactoryImpl#decodeGif}来解码Gif动画
      *
      * @param encodedImage input image (encoded bytes plus meta data)
      * @return a CloseableImage
@@ -150,6 +167,8 @@ public class DefaultImageDecoder implements ImageDecoder {
     }
 
     /**
+     *
+     * 使用{@link #mPlatformDecoder}解码静态图片,不同的系统版本实现不同
      * @param encodedImage input image (encoded bytes plus meta data)
      * @return a CloseableStaticBitmap
      */
@@ -169,6 +188,7 @@ public class DefaultImageDecoder implements ImageDecoder {
     }
 
     /**
+     * 使用{@link #mPlatformDecoder}解码JPEG图片,不同系统版本的实现不同
      * Decodes a partial jpeg.
      *
      * @param encodedImage input image (encoded bytes plus meta data)
@@ -194,8 +214,9 @@ public class DefaultImageDecoder implements ImageDecoder {
     }
 
     /**
+     * 解码Webp的动画文件，注意Webp也有静态的，若Webp为静态，那么就是调用{@link #decodeStaticImage}来解析
      * Decode a webp animated image into a CloseableImage.
-     *
+     * 这里调用了{@link AnimatedImageFactoryImpl#decodeWebP}来解码Webp动画
      * <p> The image is decoded into a 'pinned' purgeable bitmap.
      *
      * @param encodedImage input image (encoded bytes plus meta data)

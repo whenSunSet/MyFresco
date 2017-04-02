@@ -18,7 +18,7 @@ import com.facebook.imageutils.JfifUtil;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
- * Bitmap Decoder implementation for KitKat
+ * 4.4的Bitmap解码器
  *
  * <p>The MemoryFile trick used in GingerbreadPurgeableDecoder does not work in KitKat. Here, we
  * instead use Java memory to store the encoded images, but make use of a pool to minimize

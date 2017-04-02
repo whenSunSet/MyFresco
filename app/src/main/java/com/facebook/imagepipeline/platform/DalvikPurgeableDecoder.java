@@ -20,6 +20,7 @@ import com.facebook.imagepipeline.nativecode.Bitmaps;
 import com.facebook.imageutils.JfifUtil;
 
 /**
+ * 基于Dalvik VM解码bitmap的类(2.4到4.4)
  * Base class for bitmap decodes for Dalvik VM (Gingerbread to KitKat).
  */
 abstract class DalvikPurgeableDecoder implements PlatformDecoder {
@@ -36,11 +37,11 @@ abstract class DalvikPurgeableDecoder implements PlatformDecoder {
      * Creates a bitmap from encoded bytes.
      *
      * @param encodedImage the encoded image with reference to the encoded bytes
-     * @param bitmapConfig the {@link android.graphics.Bitmap.Config}
+     * @param bitmapConfig the {@link Bitmap.Config}
      * used to create the decoded Bitmap
      * @return the bitmap
      * @throws TooManyBitmapsException if the pool is full
-     * @throws java.lang.OutOfMemoryError if the Bitmap cannot be allocated
+     * @throws OutOfMemoryError if the Bitmap cannot be allocated
      */
     @Override
     public CloseableReference<Bitmap> decodeFromEncodedImage(
@@ -64,11 +65,11 @@ abstract class DalvikPurgeableDecoder implements PlatformDecoder {
      *
      * @param encodedImage the encoded image with reference to the encoded bytes
      * @param length the number of encoded bytes in the buffer
-     * @param bitmapConfig the {@link android.graphics.Bitmap.Config}
+     * @param bitmapConfig the {@link Bitmap.Config}
      * used to create the decoded Bitmap
      * @return the bitmap
      * @throws TooManyBitmapsException if the pool is full
-     * @throws java.lang.OutOfMemoryError if the Bitmap cannot be allocated
+     * @throws OutOfMemoryError if the Bitmap cannot be allocated
      */
     @Override
     public CloseableReference<Bitmap> decodeJPEGFromEncodedImage(

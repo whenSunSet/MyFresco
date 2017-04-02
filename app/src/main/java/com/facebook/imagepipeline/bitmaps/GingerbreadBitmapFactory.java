@@ -7,9 +7,10 @@ package com.facebook.imagepipeline.bitmaps;
 import android.graphics.Bitmap;
 
 import com.facebook.commom.references.CloseableReference;
+import com.facebook.imagepipeline.platform.GingerbreadPurgeableDecoder;
 
 /**
- * 2.0. bitmap的制造工厂
+ * Android 2.4 bitmap的制造工厂使用了{@link GingerbreadPurgeableDecoder}
  * Bitmap factory for Gingerbread.
  */
 public class GingerbreadBitmapFactory extends PlatformBitmapFactory {
@@ -20,10 +21,10 @@ public class GingerbreadBitmapFactory extends PlatformBitmapFactory {
      *
      * @param width the width of the bitmap
      * @param height the height of the bitmap
-     * @param bitmapConfig the {@link android.graphics.Bitmap.Config}
+     * @param bitmapConfig the {@link Bitmap.Config}
      * used to create the decoded Bitmap
      * @return a reference to the bitmap
-     * @throws java.lang.OutOfMemoryError if the Bitmap cannot be allocated
+     * @throws OutOfMemoryError if the Bitmap cannot be allocated
      */
     @Override
     public CloseableReference<Bitmap> createBitmapInternal(

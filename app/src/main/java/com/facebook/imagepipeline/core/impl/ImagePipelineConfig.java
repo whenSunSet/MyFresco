@@ -47,17 +47,17 @@ import javax.annotation.Nullable;
 
 /**
  * Master configuration class for the image pipeline library.
- *
+ * <p>
  * To use:
  * <code>
- *   ImagePipelineConfig config = ImagePipelineConfig.newBuilder()
- *       .setXXX(xxx)
- *       .setYYY(yyy)
- *       .build();
- *   ImagePipelineFactory factory = new ImagePipelineFactory(config);
- *   ImagePipeline pipeline = factory.getImagePipeline();
+ * ImagePipelineConfig config = ImagePipelineConfig.newBuilder()
+ * .setXXX(xxx)
+ * .setYYY(yyy)
+ * .build();
+ * ImagePipelineFactory factory = new ImagePipelineFactory(config);
+ * ImagePipeline pipeline = factory.getImagePipeline();
  * </code>
- *
+ * <p>
  * <p>This should only be done once per process.
  */
 public class ImagePipelineConfig {
@@ -77,18 +77,21 @@ public class ImagePipelineConfig {
     private final Supplier<MemoryCacheParams> mEncodedMemoryCacheParamsSupplier;
     private final ExecutorSupplier mExecutorSupplier;
     private final ImageCacheStatsTracker mImageCacheStatsTracker;
-    @Nullable private final ImageDecoder mImageDecoder;
+    @Nullable
+    private final ImageDecoder mImageDecoder;
     private final Supplier<Boolean> mIsPrefetchEnabledSupplier;
     private final DiskCacheConfig mMainDiskCacheConfig;
     private final MemoryTrimmableRegistry mMemoryTrimmableRegistry;
     private final NetworkFetcher mNetworkFetcher;
-    @Nullable private final PlatformBitmapFactory mPlatformBitmapFactory;
+    @Nullable
+    private final PlatformBitmapFactory mPlatformBitmapFactory;
     private final PoolFactory mPoolFactory;
     private final ProgressiveJpegConfig mProgressiveJpegConfig;
     private final Set<RequestListener> mRequestListeners;
     private final boolean mResizeAndRotateEnabledForNetwork;
     private final DiskCacheConfig mSmallImageDiskCacheConfig;
-    @Nullable private final ImageDecoderConfig mImageDecoderConfig;
+    @Nullable
+    private final ImageDecoderConfig mImageDecoderConfig;
     private final ImagePipelineExperiments mImagePipelineExperiments;
 
     private static DefaultImageRequestConfig

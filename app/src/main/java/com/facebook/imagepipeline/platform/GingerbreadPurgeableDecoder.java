@@ -14,6 +14,7 @@ import com.facebook.commom.internal.Preconditions;
 import com.facebook.commom.internal.Throwables;
 import com.facebook.commom.references.CloseableReference;
 import com.facebook.commom.streams.LimitedInputStream;
+import com.facebook.commom.webp.WebpSupportStatus;
 import com.facebook.imagepipeline.memory.PooledByteBuffer;
 import com.facebook.imagepipeline.memory.impl.PooledByteBufferInputStream;
 
@@ -23,10 +24,8 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 
 import javax.annotation.Nullable;
-
-import static com.facebook.commom.webp.WebpSupportStatus.sWebpBitmapFactory;
 /**
- * Gingerbread to Jelly Bean的bitmap解码器
+ * 2.4到4.1的bitmap解码器
  * Bitmap decoder (Gingerbread to Jelly Bean).
  * <p/>
  * <p>This copies incoming encoded bytes into a MemoryFile, and then decodes them using a file
@@ -126,7 +125,7 @@ public class GingerbreadPurgeableDecoder extends DalvikPurgeableDecoder {
         try {
             memoryFile = copyToMemoryFile(bytesRef, inputLength, suffix);
             FileDescriptor fd = getMemoryFileDescriptor(memoryFile);
-            Bitmap bitmap = sWebpBitmapFactory.decodeFileDescriptor(fd, null, options);
+            Bitmap bitmap = WebpSupportStatus.sWebpBitmapFactory.decodeFileDescriptor(fd, null, options);
             return Preconditions.checkNotNull(bitmap, "BitmapFactory returned null");
         } catch (IOException e) {
             throw Throwables.propagate(e);

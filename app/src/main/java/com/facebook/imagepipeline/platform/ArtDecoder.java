@@ -26,7 +26,7 @@ import java.nio.ByteBuffer;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
- * ART VM 解码bitmap，在5.0以下使用
+ * ART VM 解码bitmap，在5.0以上使用
  * Bitmap decoder for ART VM (Lollipop and up).
  */
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
