@@ -16,6 +16,9 @@ import java.nio.ByteBuffer;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
+ * 1.用于将Gif动画已解码数据储存在jni代码管理的本地内存中
+ * 2.通过jni代码解析未解码的Gif数据。
+ *
  * A representation of a GIF image. An instance of this class will hold a copy of the encoded
  * data in memory along with the parsed header data. Frames are decoded on demand via
  * {@link GifFrame}.
