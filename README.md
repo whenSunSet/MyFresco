@@ -11,5 +11,8 @@
 ## 二、Fresco的硬盘缓存模块
 [Fresco的硬盘缓存模块博客地址](http://www.jianshu.com/p/ab2124764438)
 
-## 三、Fresco的gif和Webp动画模块
+## 三、Fresco的内存缓存模块
+[Fresco的内存缓存模块项目地址](http://www.jianshu.com/p/ba0de15ce667)
+
+## 四、Fresco的gif和Webp动画模块
 [Fresco的gif和Webp动画模块博客地址](http://www.jianshu.com/p/36663090b140)
